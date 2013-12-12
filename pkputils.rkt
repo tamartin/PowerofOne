@@ -178,6 +178,10 @@
       #:x-label "population size"
       #:title "win-contrib compared to portion of population")
 
+(plot (function (lambda (x) (/ (contribution-a-of-n 1 x) (/ 1 x))) #:samples 10 #:color 'blue)
+      #:x-min 10 #:x-max 1000
+      #:title "ratio of contribution to portion of population")
+
 ;; PLOTTING FIGURES
 
 ;; plot-histogram : (listof number) [string] -> image
