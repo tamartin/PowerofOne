@@ -4,6 +4,7 @@
 (require test-engine/racket-tests)
 (require plot)
 (require plot/utils)
+;(require math/number-theory)
 
 (provide (all-defined-out))
 
@@ -77,29 +78,13 @@
          for)))
 
 
-(define (fact n)
-  (if (zero? n)
-      1
-      (* n (fact (sub1 n)))))
-
 ;; binomial: number number -> number
 ;; compute binomial coefficient 
 (check-expect (binomial 11 10) 11)
 (check-expect (binomial 11 1) 11)
 (check-expect (binomial 5 3) 10)
 (check-expect (binomial 5 2) 10)
-(define (binomial n k) (binomial-b n k))
-(define (binomial-a n k)
-  (local ((define (compute-it n k)
-            (foldl * 1 
-                   (map / 
-                        (build-list (- n k) (lambda (i) (+ i k 1)))
-                        (build-list (- n k) (lambda (i) (+ i 1)))))))
-    (if (> k (/ n 2))
-        (compute-it n k)
-        (compute-it n (- n k)))))
-
-(define (binomial-b n k)
+(define (binomial n k)
   (local ((define (compute-it n k)
             (/ (for/product ([p (in-range (add1 k) (add1 n))]) p)
                (for/product ([p (in-range 1 (add1 (- n k)))]) p))))
@@ -184,6 +169,14 @@
   (- (probability-win (add1 for) against (sub1 undecided))
      (probability-win for against undecided)))
 
+;; compare win-contribution to portion of population
+;; note: fraction of population goes to zero much faster than contribution
+(plot (list (function (lambda (x) (contribution-a-of-n 1 x)) #:samples 10 #:color 'blue #:label "power of 1")
+            (function (lambda (x) (/ 1 x)) #:color 'red #:label "portion of population")
+            )
+      #:y-min 0 #:y-max 1 #:x-min 10 #:x-max 1000
+      #:x-label "population size"
+      #:title "win-contrib compared to portion of population")
 
 ;; PLOTTING FIGURES
 
