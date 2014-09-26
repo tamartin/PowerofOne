@@ -41,27 +41,6 @@
 (define (num-terms y n u)
   (+ (- u (min-undecided-yes y n u)) 1))
 
-;; p-win: number number number -> probability
-;; for committed for and against and undecided, what is probability that yes wins the vote
-(define (p-win for against undecided)
-  (if (enough-undecided? for against undecided)
-      (let* ((total (+ for against undecided))
-         (half-maybe-plus (+ (floor (/ total 2)) 1)))
-    (foldl + 0.0
-    ;;(map (lambda (n) n)
-           (build-list (num-terms for against undecided)
-                       (lambda (nuf) ;; for each possible number of undecideds voting 'for'
-                         (/ (binomial undecided 
-                                      (+ nuf (min-undecided-yes for against undecided)))
-                            (expt 2 undecided))))))
-      0))
-
-;; contribution-a-of-n : number number -> probability
-;; compared to a population of n naive voters, compute the contribution of a astute voters
-(define (contribution-a-of-n a n)
-  (- (p-win a 0 (- n a))
-     (p-win 0 0 n)))
-
 
 ;; BASIC UTILITIES: THEORETICAL MODEL OF VOTING
 
@@ -141,19 +120,27 @@
                        (lambda (nuf) 
                          (one-outcome-expect-share-w/-undecided total (+ for nuf) undecided nuf))))))
 
+
+;; p-win: number number number -> probability
+;; for committed for and against and undecided, what is probability that yes wins the vote
+(define (p-win for against undecided)
+  (if (enough-undecided? for against undecided)
+      (let* ((total (+ for against undecided))
+             (half-maybe-plus (+ (floor (/ total 2)) 1)))
+        (foldl + 0.0
+               ;;(map (lambda (n) n)
+               (build-list (num-terms for against undecided)
+                           (lambda (nuf) ;; for each possible number of undecideds voting 'for'
+                             (/ (binomial undecided 
+                                          (+ nuf (min-undecided-yes for against undecided)))
+                                (expt 2 undecided))))))
+      0))
+
 ;; probability-win: number number number -> number
 ;; compute the simple probability of a winning ('for') vote outcome when
 ;; given a number of voters for, against, and undecided, where undecideds flip an even coin 
-(define (probability-win for against undecided)
-  (let* ((total (+ for against undecided))
-         (half-maybe-plus (+ (floor (/ total 2)) 1)))
-    (foldl + 0.0
-           (build-list (add1 undecided) 
-                       (lambda (nuf) ;; for each possible number of undecideds voting 'for'
-                         (if (> (+ for nuf) (+ against (- undecided nuf)))
-                             (/ (binomial undecided (abs (- undecided nuf)))
-                                (expt 2 undecided))
-                             0))))))
+(define probability-win p-win)
+
 
 (plot (list (function (lambda (p) (probability-win (* 100 p) (- 90 (* 100 p)) 10)) 2/5 3/5 #:samples 11)
             (function (lambda (p) (probability-win (* 1000 p) (- 900 (* 1000 p)) 100)) 2/5 3/5 #:samples 101)
@@ -161,13 +148,25 @@
             )
       #:y-min 0 #:y-max 1)
 
+
 ;; win-contrib: number number number -> number
 ;; attempt to convince Tom Knecht of a better model
-;; compute the difference in probability of win given for, against, and undecided voters,
-;; where one undecided becomes astute and decides to vote 'for' 
+;; compute the difference in probability that is made when one undecided voter converts to astute
+;; given an existing number of for, against, and undecided voters,
+;; NOTE: hold the total population constant
 (define (win-contrib for against undecided)
-  (- (probability-win (add1 for) against (sub1 undecided))
-     (probability-win for against undecided)))
+  (- (p-win (add1 for) against (sub1 undecided))
+     (p-win for against undecided)))
+
+;; contribution-a-of-n : number number -> probability
+;; compute the contribution of a astute voters when added to
+;; a population of only naive voters (n of them), 
+;; NOTE: holding total size of population constant
+(define (contribution-a-of-n a n)
+  (- (p-win a 0 (- n a))
+     (p-win 0 0 n)))
+
+
 
 ;; compare win-contribution to portion of population
 ;; note: fraction of population goes to zero much faster than contribution
@@ -177,10 +176,16 @@
       #:y-min 0 #:y-max 1 #:x-min 10 #:x-max 1000
       #:x-label "population size"
       #:title "win-contrib compared to portion of population")
+(plot-width 600)
+(plot-height 600)
+(plot-font-size 18)
+(line-width 3)
 
 (plot (function (lambda (x) (/ (contribution-a-of-n 1 x) (/ 1 x))) #:samples 10 #:color 'blue)
+      #:out-file "relativeinfluence.jpg"
       #:x-min 10 #:x-max 1000
-      #:title "ratio of contribution to portion of population")
+      #:x-label "population size" #:y-label "relative influence"
+      #:title "Contribution of One Astute Voter Relative to Population Size")
 
 ;; PLOTTING FIGURES
 
@@ -304,6 +309,12 @@
       #:x-label "number of astute voters (of 100)" #:y-label "probability of win")
       
 ;; pop 1000, 1000simrep
+
+(plot-width 600)
+(plot-height 600)
+(plot-font-size 18)
+(line-width 3)
+
 (plot (list (lines (list (vector 0 0.489)
                          (vector 1 0.518)
                          (vector 2 0.509)
@@ -329,7 +340,7 @@
                          (vector 16 0.6837287171426142)
                          (vector 32 0.8404664983742928))
                    #:color 'blue))
-      ;; #:out-file "modelsim1K.jpg"
+      #:out-file "modelsim1Klrg.jpg"
       #:x-min 0.0 #:y-min 0.4
       #:x-max 40 #:y-max 1.0
       #:x-label "number of astute voters (of 1000)" #:y-label "probability of win")
@@ -353,7 +364,7 @@
                          (vector 16 0.5596646031357814)
                          (vector 32 0.6219076615128083))
                    #:color 'blue))
-      ;; #:out-file "modelsim10K.jpg"
+      #:out-file "modelsim10Klrg.jpg"
       #:x-min 0.0 #:y-min 0.4
       #:x-max 40 #:y-max 1.0
       #:x-label "number of astute voters (of 10,000)" #:y-label "probability of win")
